@@ -2916,6 +2916,8 @@ function stepTransport(now){
  rightReel.setAttribute('transform',`rotate(${transport.rightAngle.toFixed(3)})`);
  if(tapeMotionLine)tapeMotionLine.setAttribute('stroke-dashoffset',(-transport.elapsed*130).toFixed(2));
 }
+let tmfrayLastMeterPaint=0;
+let tmfrayLastReadoutSecond=-1;
 function animate(t){
  // Drive the *visual* motor status from the same durations as C++ capstan power.
  // The authoritative reel travel still comes from native C++ processed samples.
@@ -2924,8 +2926,11 @@ function animate(t){
   const u=Math.min(1,powerTransport.elapsed/powerTransport.duration),ease=u*u*(3-2*u);
   powerTransport.depth=powerTransport.from+(powerTransport.to-powerTransport.from)*ease;
  }
- stepTransport(t);updateMeter(t);updateAdvancedLamps(t);
-if(playing){let seconds=Math.floor((t-started)/1000),mm=String(Math.floor(seconds/60)).padStart(2,'0'),ss=String(seconds%60).padStart(2,'0');document.getElementById('readout-state').textContent=`${!powered?(powerTransport.depth>.001?'WIND DN':'OFF'):powerTransport.depth<.999?'SPIN UP':brake.depth<.001?'PAUSE':'PLAY'} ${mm}:${ss}`}
+ stepTransport(t);
+// Mobile: prioritize smooth reel frames; expensive analyser/SVG meter painting runs at <=30 Hz.
+if(t-tmfrayLastMeterPaint>=33){updateMeter(t);updateAdvancedLamps(t);tmfrayLastMeterPaint=t;}
+if(playing){let seconds=Math.floor((t-started)/1000);if(seconds!==tmfrayLastReadoutSecond){tmfrayLastReadoutSecond=seconds;let mm=String(Math.floor(seconds/60)).padStart(2,'0'),ss=String(seconds%60).padStart(2,'0');document.getElementById('readout-state').textContent=`${!powered?(powerTransport.depth>.001?'WIND DN':'OFF'):powerTransport.depth<.999?'SPIN UP':brake.depth<.001?'PAUSE':'PLAY'} ${mm}:${ss}`}}
+else tmfrayLastReadoutSecond=-1;
 if(audioFailure){
    document.getElementById('play').textContent='Play';
    document.getElementById('status').textContent='Audio DSP error: '+audioFailure;
