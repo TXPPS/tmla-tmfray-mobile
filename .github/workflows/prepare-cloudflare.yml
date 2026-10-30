@@ -1,0 +1,41 @@
+name: Prepare Cloudflare Pages files
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'TMFRAY_Cloudflare_265_Fresh.zip'
+      - '.github/workflows/prepare-cloudflare.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Extract site files from ZIP
+        run: |
+          python - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          archive = Path("TMFRAY_Cloudflare_265_Fresh.zip")
+          with ZipFile(archive) as z:
+              expected = {"index.html", "tmfray-audio-worklet.js"}
+              actual = set(z.namelist())
+              if actual != expected:
+                  raise SystemExit(f"Unexpected archive contents: {sorted(actual)}")
+              for name in sorted(expected):
+                  Path(name).write_bytes(z.read(name))
+          PY
+      - name: Commit Cloudflare site files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html tmfray-audio-worklet.js
+          if ! git diff --cached --quiet; then
+            git commit -m "deploy: extract TM-FRAY mobile site files"
+            git push
+          fi
