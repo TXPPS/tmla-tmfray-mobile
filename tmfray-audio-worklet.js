@@ -95,14 +95,14 @@ class TMFrayNativeProcessor extends AudioWorkletProcessor{
   if(!this.ready){l.fill(0);r.fill(0);return true;}
   try{
    if(this.routePending&&this.routingFade<=0){this.core.sync(this.routePending);this.routePending=null;this.routeFadeDelta=1/256;}
-   const tmStart=performance.now();
+   const tmStart=(typeof performance!=='undefined' && typeof performance.now==='function') ? performance.now() : null;
    if(!this.core.render(l.length,l,r)){this.port.postMessage({type:'error',message:'Native render rejected audio block'});return true;}
    if(this.routeFadeDelta){
     for(let i=0;i<l.length;i++){this.routingFade=Math.max(0,Math.min(1,this.routingFade+this.routeFadeDelta));l[i]*=this.routingFade;r[i]*=this.routingFade;}
     if(this.routingFade>=1&&!this.routePending)this.routeFadeDelta=0;
    }
    // Rebuild 264: diagnostic sampling only; no DSP writes or allocations per sample.
-   const d=this.diag;d.blocks++;const ms=performance.now()-tmStart;d.maxMs=Math.max(d.maxMs,ms);
+   const d=this.diag;d.blocks++;const ms=tmStart===null ? 0 : performance.now()-tmStart;d.maxMs=Math.max(d.maxMs,ms);
    if(ms>(l.length/sampleRate*1000))d.slow++;
    for(let i=0;i<l.length;i++){
     const a=l[i],b=r[i];if(!Number.isFinite(a)||!Number.isFinite(b)){d.nonfinite++;continue;}
