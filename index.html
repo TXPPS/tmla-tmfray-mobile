@@ -1219,7 +1219,7 @@ body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
 <!-- reel geometry follows hand-drawn concept: small left, big right -->
 <g id="transport-assembly" transform="translate(0 -32)"><!-- Transport shell and perimeter removed; original metal panel exposed. -->
 <!-- Rebuild 104: taut straight tape runs, from left spindle (228,287) into the concealed motor route and straight out to right spindle (965,243). Fixed ends stay beneath rotating metal hub faces; no curved segments, moving dashes remain animated. -->
-<g class="sketch" fill="none"><path id="tape-ribbon" d="M228 287 L500 475 L708 500 L965 243" stroke="#41483e" stroke-width="11"/><path id="tape-motion-dashes" d="M228 287 L500 475 L708 500 L965 243" stroke="#a1a69c" stroke-width="2.2" stroke-dasharray="30 13"/><path id="tmfray-tape-surface" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#554337" stroke-width="8.5" stroke-linecap="butt" opacity="0" pointer-events="none"/><path id="tmfray-tape-grain" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#d5bc95" stroke-width="1.3" stroke-dasharray="2 10 1 17" opacity="0" pointer-events="none"/></g>
+<g class="sketch" fill="none"><path id="tape-ribbon" d="M228 287 L500 475 L708 500 L965 243" stroke="#41483e" stroke-width="11"/><path id="tape-motion-dashes" d="M228 287 L500 475 L708 500 L965 243" stroke="#a1a69c" stroke-width="2.2" stroke-dasharray="30 13"/><path id="tmfray-tape-surface" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#554337" stroke-width="8.5" stroke-linecap="butt" opacity="0" pointer-events="none"/><path id="tmfray-tape-grain" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#d5bc95" stroke-width="1.3" stroke-dasharray="2 10 1 17" opacity="0" pointer-events="none"/><path class="tmfray-tape-motion" d="M250 302 L476 459" fill="none" stroke="#c1a58a" stroke-width="1.4" opacity="0" pointer-events="none"/><path class="tmfray-tape-motion" d="M730 478 L943 265" fill="none" stroke="#c1a58a" stroke-width="1.4" opacity="0" pointer-events="none"/></g>
 <g transform="translate(228 287)"><g id="left-reel" class="reel-rot"><g transform="scale(.86)">
  <use href="#reel-base"/>
  <g id="left-tape-pack" pointer-events="none">
@@ -2836,32 +2836,53 @@ const tmTapePalette={
  MOSS:['#555b3b','#9a9b68','5 24 2 15'],
  DUST:['#71695d','#b9ae95','1 6 1 19']
 };
-const tmFraySurface={
- SWAY:['#a48c74','4 26 2 19'],WANDER:['#998575','3 14 1 24'],
- RISE:['#b49a78','5 17 1 27'],FALL:['#877360','2 18 1 12'],
- COLLAPSE:['#8b7768','2 9 1 23']
+// GROVE owns the material. FRAY owns motion, never color or texture.
+const tmFrayMotion={
+ SWAY:(u,t)=>Math.sin(u*7-t*2.6)*2.3,
+ WANDER:(u,t)=>Math.sin(u*4-t*1.25)*2.4+Math.sin(u*11+t*.67)*.8,
+ RISE:(u,t)=>-Math.pow(Math.sin(u*7-t*2.2)*.5+.5,3)*3.6,
+ FALL:(u,t)=>Math.pow(Math.sin(u*7-t*2.2)*.5+.5,3)*3.6,
+ COLLAPSE:(u,t)=>Math.pow(Math.max(0,Math.sin(u*10-t*3)),12)*3.2
 };
-let tmTapeLastPaint=0,tmTapeSurfaceAlpha=0,tmTapeGrainAlpha=0;
+const tmTapeRuns=[
+ {a:[228,287],b:[500,475],start:.08,end:.91},
+ {a:[708,500],b:[965,243],start:.09,end:.91}
+];
+const tmTapeMotionPaths=[...document.querySelectorAll('.tmfray-tape-motion')];
+let tmTapeLastPaint=0,tmTapeSurfaceAlpha=0,tmTapeGrainAlpha=0,tmFrayVisualDepth=0;
+function tmTapeMotionPath(run,t){
+ const [ax,ay]=run.a,[bx,by]=run.b,dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
+ let d='';
+ for(let i=0;i<=12;i++){
+  const u=run.start+(run.end-run.start)*i/12;
+  const baseX=ax+dx*u,baseY=ay+dy*u;
+  const taper=Math.sin(Math.PI*i/12)**.65;
+  const offset=tmFrayMotion[pitch](u*len/120,t)*tmFrayVisualDepth*taper;
+  d+=(i?' L':'M')+(baseX+nx*offset).toFixed(2)+' '+(baseY+ny*offset).toFixed(2);
+ }
+ return d;
+}
 function tmPaintTapeSurface(now){
  if(now-tmTapeLastPaint<50)return;
  const dt=tmTapeLastPaint?Math.min(.1,(now-tmTapeLastPaint)/1000):.05;
  tmTapeLastPaint=now;
  const g=sectionOn.grove?tmTapePalette[grove]:null;
- const f=sectionOn.fray?tmFraySurface[pitch]:null;
- const targetSurface=g||f?.length?1:0;
- const targetGrain=g||f?1:0;
- const k=1-Math.exp(-dt/0.22);
- tmTapeSurfaceAlpha+=(targetSurface-tmTapeSurfaceAlpha)*k;
- tmTapeGrainAlpha+=(targetGrain-tmTapeGrainAlpha)*k;
- tmTapeSurface.setAttribute('stroke',g?g[0]:(f?'#695345':'#41483e'));
- tmTapeSurface.setAttribute('opacity',(tmTapeSurfaceAlpha*(g?.8:.48)).toFixed(3));
- tmTapeGrain.setAttribute('stroke',f?f[0]:(g?g[1]:'#a1a69c'));
- tmTapeGrain.setAttribute('stroke-dasharray',f?f[1]:(g?g[2]:'2 10 1 17'));
- tmTapeGrain.setAttribute('opacity',(tmTapeGrainAlpha*(f?.46:.31)).toFixed(3));
- if(playing&&transport.visualSpeed){
-  const offset=(-transport.elapsed*130).toFixed(2);
-  tmTapeGrain.setAttribute('stroke-dashoffset',offset);
+ const k=1-Math.exp(-dt/.22);
+ tmTapeSurfaceAlpha+=((g?1:0)-tmTapeSurfaceAlpha)*k;
+ tmTapeGrainAlpha+=((g?1:0)-tmTapeGrainAlpha)*k;
+ tmTapeSurface.setAttribute('stroke',g?g[0]:'#41483e');
+ tmTapeSurface.setAttribute('opacity',(tmTapeSurfaceAlpha*.78).toFixed(3));
+ tmTapeGrain.setAttribute('stroke',g?g[1]:'#a1a69c');
+ tmTapeGrain.setAttribute('stroke-dasharray',g?g[2]:'2 10 1 17');
+ tmTapeGrain.setAttribute('opacity',(tmTapeGrainAlpha*.4).toFixed(3));
+ tmFrayVisualDepth+=((sectionOn.fray&&playing?1:0)-tmFrayVisualDepth)*k;
+ const time=transport.elapsed*(reverseService.reverse?-1:1);
+ for(let i=0;i<tmTapeMotionPaths.length;i++){
+  const path=tmTapeMotionPaths[i];
+  path.setAttribute('opacity',(tmFrayVisualDepth*.85).toFixed(3));
+  if(tmFrayVisualDepth>.005)path.setAttribute('d',tmTapeMotionPath(tmTapeRuns[i],time));
  }
+ if(playing&&transport.visualSpeed)tmTapeGrain.setAttribute('stroke-dashoffset',(-transport.elapsed*130).toFixed(2));
 }
 
 // Both ribbon endpoints are fixed at the spindle centers in the SVG markup,
