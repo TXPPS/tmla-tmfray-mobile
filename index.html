@@ -1219,7 +1219,7 @@ body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
 <!-- reel geometry follows hand-drawn concept: small left, big right -->
 <g id="transport-assembly" transform="translate(0 -32)"><!-- Transport shell and perimeter removed; original metal panel exposed. -->
 <!-- Rebuild 104: taut straight tape runs, from left spindle (228,287) into the concealed motor route and straight out to right spindle (965,243). Fixed ends stay beneath rotating metal hub faces; no curved segments, moving dashes remain animated. -->
-<g class="sketch" fill="none"><path id="tape-ribbon" d="M228 287 L500 475 L708 500 L965 243" stroke="#41483e" stroke-width="11"/><path id="tape-motion-dashes" d="M228 287 L500 475 L708 500 L965 243" stroke="#a1a69c" stroke-width="2.2" stroke-dasharray="30 13"/></g>
+<g class="sketch" fill="none"><path id="tape-ribbon" d="M228 287 L500 475 L708 500 L965 243" stroke="#41483e" stroke-width="11"/><path id="tape-motion-dashes" d="M228 287 L500 475 L708 500 L965 243" stroke="#a1a69c" stroke-width="2.2" stroke-dasharray="30 13"/><path id="tmfray-tape-surface" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#554337" stroke-width="8.5" stroke-linecap="butt" opacity="0" pointer-events="none"/><path id="tmfray-tape-grain" d="M228 287 L500 475 L708 500 L965 243" fill="none" stroke="#d5bc95" stroke-width="1.3" stroke-dasharray="2 10 1 17" opacity="0" pointer-events="none"/></g>
 <g transform="translate(228 287)"><g id="left-reel" class="reel-rot"><g transform="scale(.86)">
  <use href="#reel-base"/>
  <g id="left-tape-pack" pointer-events="none">
@@ -2827,6 +2827,43 @@ attachReelTouch(leftReel,0,104);
 attachReelTouch(rightReel,1,138);
 const tapeMotionLine=document.getElementById('tape-motion-dashes');
 const tapeRibbon=document.getElementById('tape-ribbon');
+// Visual-only coating on exposed tape. No reel/motor geometry or audio state is changed.
+const tmTapeSurface=document.getElementById('tmfray-tape-surface');
+const tmTapeGrain=document.getElementById('tmfray-tape-grain');
+const tmTapePalette={
+ WOOD:['#76543c','#d1a477','3 18 1 23'],
+ PAPER:['#927c60','#e6c99b','2 8 1 14'],
+ MOSS:['#555b3b','#9a9b68','5 24 2 15'],
+ DUST:['#71695d','#b9ae95','1 6 1 19']
+};
+const tmFraySurface={
+ SWAY:['#a48c74','4 26 2 19'],WANDER:['#998575','3 14 1 24'],
+ RISE:['#b49a78','5 17 1 27'],FALL:['#877360','2 18 1 12'],
+ COLLAPSE:['#8b7768','2 9 1 23']
+};
+let tmTapeLastPaint=0,tmTapeSurfaceAlpha=0,tmTapeGrainAlpha=0;
+function tmPaintTapeSurface(now){
+ if(now-tmTapeLastPaint<50)return;
+ const dt=tmTapeLastPaint?Math.min(.1,(now-tmTapeLastPaint)/1000):.05;
+ tmTapeLastPaint=now;
+ const g=sectionOn.grove?tmTapePalette[grove]:null;
+ const f=sectionOn.fray?tmFraySurface[pitch]:null;
+ const targetSurface=g||f?.length?1:0;
+ const targetGrain=g||f?1:0;
+ const k=1-Math.exp(-dt/0.22);
+ tmTapeSurfaceAlpha+=(targetSurface-tmTapeSurfaceAlpha)*k;
+ tmTapeGrainAlpha+=(targetGrain-tmTapeGrainAlpha)*k;
+ tmTapeSurface.setAttribute('stroke',g?g[0]:(f?'#695345':'#41483e'));
+ tmTapeSurface.setAttribute('opacity',(tmTapeSurfaceAlpha*(g?.8:.48)).toFixed(3));
+ tmTapeGrain.setAttribute('stroke',f?f[0]:(g?g[1]:'#a1a69c'));
+ tmTapeGrain.setAttribute('stroke-dasharray',f?f[1]:(g?g[2]:'2 10 1 17'));
+ tmTapeGrain.setAttribute('opacity',(tmTapeGrainAlpha*(f?.46:.31)).toFixed(3));
+ if(playing&&transport.visualSpeed){
+  const offset=(-transport.elapsed*130).toFixed(2);
+  tmTapeGrain.setAttribute('stroke-dashoffset',offset);
+ }
+}
+
 // Both ribbon endpoints are fixed at the spindle centers in the SVG markup,
 // and the spinning hub faces cover both ends. Reel winding never shifts these
 // coordinates. Dashed movement is controlled by stroke-dashoffset in stepTransport.
@@ -2930,7 +2967,7 @@ function animate(t){
   const u=Math.min(1,powerTransport.elapsed/powerTransport.duration),ease=u*u*(3-2*u);
   powerTransport.depth=powerTransport.from+(powerTransport.to-powerTransport.from)*ease;
  }
- stepTransport(t);
+ stepTransport(t);tmPaintTapeSurface(t);
 // Mobile: prioritize smooth reel frames; expensive analyser/SVG meter painting runs at <=30 Hz.
 if(t-tmfrayLastMeterPaint>=33){updateMeter(t);updateAdvancedLamps(t);tmfrayLastMeterPaint=t;}
 if(playing){let seconds=Math.floor((t-started)/1000);if(seconds!==tmfrayLastReadoutSecond){tmfrayLastReadoutSecond=seconds;let mm=String(Math.floor(seconds/60)).padStart(2,'0'),ss=String(seconds%60).padStart(2,'0');document.getElementById('readout-state').textContent=`${!powered?(powerTransport.depth>.001?'WIND DN':'OFF'):powerTransport.depth<.999?'SPIN UP':brake.depth<.001?'PAUSE':'PLAY'} ${mm}:${ss}`}}
