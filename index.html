@@ -1247,6 +1247,16 @@ body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
  </g>
  <g id="right-reel-face-variant" pointer-events="none"><use href="#reel-face"/></g>
  </g></g></g>
+<!-- Passive TAPE processing indicator; fixed to the transport panel, outside moving reel groups. -->
+<g id="tm-tape-status" transform="translate(430 351)" pointer-events="none" aria-label="Tape effect status and speed">
+ <rect x="-2" y="-3" width="92" height="29" rx="4" fill="#35413b" stroke="#79847b" stroke-width="1.5"/>
+ <rect x="1" y="0" width="86" height="23" rx="2.5" fill="#252e29" stroke="#171d19" stroke-width="1"/>
+ <circle cx="13" cy="11.5" r="6.5" fill="#121814" stroke="#7a8176" stroke-width="1.3"/>
+ <circle id="tm-tape-status-lamp" cx="13" cy="11.5" r="4" fill="#514735"/>
+ <text x="25" y="10" font-family="Arial,sans-serif" font-size="7" font-weight="bold" letter-spacing=".8" fill="#abb6a7">TAPE</text>
+ <text id="tm-tape-status-speed" x="25" y="20" font-family="monospace" font-size="9" font-weight="bold" fill="#d0c6a9">1×</text>
+ <text id="tm-tape-status-state" x="56" y="19" font-family="Arial,sans-serif" font-size="8" fill="#8e9990">ON</text>
+</g>
 <!-- Rebuild 152: refreshed satin-metal hatch finish, no exterior lettering. Screenshot red outline corresponds to machine SVG approximately x=385..792, y=190..310 (viewBox starts at -100). Position hatch below header and above motor. -->
 <g id="delay-hatch-assembly" aria-label="Tape delay hinged access panel" transform="translate(-35 90) scale(1.04 .66)">
  <g id="delay-hatch-bay" visibility="hidden">
@@ -2122,8 +2132,21 @@ function renderReelAppearance(){
 function updateModes(){for(const b of modeSpecs){let on=b.group==='pitch'?pitch===b.name:grove===b.name;b.el.style.setProperty('--cap-fill',on?modePressedColor(b.color):b.color);b.el.setAttribute('aria-pressed',String(on))}renderReelAppearance();window.__tmSyncFrayPerformance?.();if(window.__cp01UpdateAdvanced)window.__cp01UpdateAdvanced();if(window.__tmGroveTimingReady)updateDisplay()}
 updateModes();
 const speedSpecs=[{name:'1/2 SPEED',rate:.5,x:496},{name:'NORMAL',rate:1,x:635},{name:'2X SPEED',rate:2,x:774}];
+function tmUpdateTapeStatus(){
+ const lamp=document.getElementById('tm-tape-status-lamp');
+ const speed=document.getElementById('tm-tape-status-speed');
+ const state=document.getElementById('tm-tape-status-state');
+ if(!lamp||!speed||!state)return;
+ const enabled=!!sectionOn.tape;
+ lamp.setAttribute('fill',enabled?'#e8a54e':'#514735');
+ speed.textContent=tapeSpeed===.5?'½×':tapeSpeed===2?'2×':'1×';
+ speed.setAttribute('fill',enabled?'#e2d0a6':'#89918a');
+ state.textContent=enabled?'ON':'OFF';
+ state.setAttribute('fill',enabled?'#e8b56d':'#8e9990');
+}
 function setTapeSpeed(rate){
  tapeSpeed=rate;
+ tmUpdateTapeStatus();
  const speedMixKnob=knobSpecs.find(k=>k.name==='SPD MIX');
  const enabled=rate!==1;
  speedMixKnob.group.setAttribute('aria-disabled',String(!enabled));
@@ -2173,7 +2196,7 @@ for(const b of sectionSwitches){
  const r=mk('rect',{x:b.x-31,y:b.y-11,width:62,height:23,rx:3,fill:'#b7d0b5',stroke:'#4d594d','stroke-width':2},g);
  mk('rect',{x:b.x-28,y:b.y-8,width:56,height:17,rx:2,fill:'url(#panelpaper)','pointer-events':'none'},g);const t=label('ON',b.x,b.y+1,13,g);
  const update=()=>{r.setAttribute('fill',sectionOn[b.id]?'#b7d0b5':'#d1c6bf');t.textContent=sectionOn[b.id]?'ON':'OFF';g.setAttribute('aria-pressed',String(sectionOn[b.id]));g.setAttribute('aria-label',`${b.id.toUpperCase()} ${sectionOn[b.id]?'on':'off'}`)};
- const act=()=>{sectionOn[b.id]=!sectionOn[b.id];routeChanged();update();updateAudio();if(b.id==='tape')updateTapeTempoReadout()};
+ const act=()=>{sectionOn[b.id]=!sectionOn[b.id];routeChanged();update();if(b.id==='tape')tmUpdateTapeStatus();updateAudio();if(b.id==='tape')updateTapeTempoReadout()};
  g.addEventListener('click',act);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}});update();
 }
 const power=document.getElementById('power');
