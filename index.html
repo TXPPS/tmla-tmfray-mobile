@@ -1636,8 +1636,8 @@ body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
    <div id="book-message" class="book-message" role="status" aria-live="polite"></div>
   </div>
  </section>
-</div><div id="tm-diagnostic-overlay" hidden><section id="tm-diagnostic-panel" role="dialog" aria-modal="true" aria-label="TM-FRAY audio diagnostics"><h2>AUDIO DIAGNOSTICS · R264</h2><p>Record a clean start, switch Grove modes until the crackling occurs, then tap Copy Log. No audio samples or file contents are included.</p><div id="tm-diag-summary" aria-live="polite">Waiting for audio engine…</div><textarea id="tm-diag-text" readonly aria-label="Diagnostic log"></textarea><div class="tm-actions"><button id="tm-diag-copy" type="button">COPY LOG</button><button id="tm-diag-refresh" type="button">REFRESH</button><button id="tm-diag-clear" type="button">CLEAR LOG</button><button id="tm-diag-close" type="button">CLOSE</button></div><p class="tm-help">On iPhone Edge, if Copy is blocked, tap the log, Select All, then Copy. Timing overruns are estimates, not confirmed hardware underruns.</p></section></div>
-<div class="bar"><label>Load audio<input id="file" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg"></label><button id="play">Play</button><button id="stop">Stop</button><button id="tm-diagnostic-open" type="button" aria-label="Open audio diagnostic log">DIAG</button><button id="tone">Test tone</button><span id="status">Ready · load WAV/MP3 or try test tone</span><span id="native-dsp-label" role="status" aria-live="polite" style="font:600 10px/1.2 monospace;color:#43564a;letter-spacing:.03em;white-space:nowrap">C++ DSP: INITIALIZING ON PLAY</span></div>
+</div><div id="tm-diagnostic-overlay" hidden><section id="tm-diagnostic-panel" role="dialog" aria-modal="true" aria-label="TM-FRAY full plugin diagnostics"><h2>FULL PLUGIN DIAGNOSTICS · BUILD 265</h2><p>Captures engine, controls, routing, transport, reel appearance, browser state, errors, and recent events. No audio samples or file contents are included.</p><div id="tm-diag-summary" aria-live="polite">Waiting for audio engine…</div><textarea id="tm-diag-text" readonly aria-label="Diagnostic log"></textarea><div class="tm-actions"><button id="tm-diag-copy" type="button">COPY LOG</button><button id="tm-diag-refresh" type="button">REFRESH</button><button id="tm-diag-clear" type="button">CLEAR LOG</button><button id="tm-diag-close" type="button">CLOSE</button></div><p class="tm-help">On iPhone Edge, if Copy is blocked, tap the log, Select All, then Copy. The report captures observed states, not proof that every DSP algorithm is correct. Timing overruns are estimates.</p></section></div>
+<div class="bar"><label>Load audio<input id="file" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg"></label><button id="play">Play</button><button id="stop">Stop</button><button id="tm-diagnostic-open" type="button" aria-label="Open full plugin diagnostic report">DIAG</button><button id="tone">Test tone</button><span id="status">Ready · load WAV/MP3 or try test tone</span><span id="native-dsp-label" role="status" aria-live="polite" style="font:600 10px/1.2 monospace;color:#43564a;letter-spacing:.03em;white-space:nowrap">C++ DSP: INITIALIZING ON PLAY</span></div>
 
 <div id="routing-sheet" role="dialog" aria-modal="true" aria-labelledby="routing-title">
  <section id="routing-sheet-paper">
@@ -1727,8 +1727,22 @@ const TMFRAY_DIAG={
  events:[],lastMode:null,lastEnabled:null,started:performance.now(),maxEvents:450,
  add(type,data={}){const e={t:+((performance.now()-this.started)/1000).toFixed(3),type,...data};this.events.push(e);if(this.events.length>this.maxEvents)this.events.shift();},
  trackState(s){const mode=s.groveMode,enabled=!!s.enabled?.grove;if(mode!==this.lastMode||enabled!==this.lastEnabled){this.add('grove-state',{mode,enabled,playing:!!s.playing,source:typeof playMode==='string'?playMode:'unknown'});this.lastMode=mode;this.lastEnabled=enabled;}},
- export(){return JSON.stringify({build:265,created:new Date().toISOString(),platform:navigator.userAgent,audio:{sampleRate:typeof ctx!=='undefined'&&ctx?ctx.sampleRate:null,contextState:typeof ctx!=='undefined'&&ctx?ctx.state:null,host:typeof TMFRAY_NATIVE!=='undefined'?TMFRAY_NATIVE.mode:null,origin:location.origin,protocol:location.protocol,workletFailure:typeof TMFRAY_NATIVE!=='undefined'?TMFRAY_NATIVE.workletFailure:null},source:{kind:typeof playMode==='string'?playMode:'unknown',durationSeconds:typeof buffer!=='undefined'&&buffer?+buffer.duration.toFixed(2):null,channels:typeof buffer!=='undefined'&&buffer?buffer.numberOfChannels:null},events:this.events},null,2);}
+ export(){const issues=[],exists=id=>!!document.getElementById(id);
+ const required=['machine','left-reel','right-reel','left-reel-face-variant','right-reel-face-variant','left-pack-body','right-pack-body','tape-ribbon','tmfray-tape-surface','tmfray-tape-grain','tm-tape-status','tm-tape-status-lamp','tm-tape-status-speed','tm-tape-status-state','play','stop','file'];
+ const missing=required.filter(id=>!exists(id));if(missing.length)issues.push({severity:'ERROR',type:'missing-ui-elements',ids:missing});
+ const shape=typeof sectionOn!=='undefined'?(sectionOn.fray?pitch:'NEUTRAL'):'unknown',finish=typeof sectionOn!=='undefined'?(sectionOn.grove?grove:'NEUTRAL'):'unknown';
+ const reelSides=['left','right'].map(side=>{const el=document.getElementById(side+'-reel-face-variant');return {side,frayMode:el?.getAttribute('data-fray-mode')||null,groveMode:el?.getAttribute('data-grove-mode')||null,spokes:el?.getAttribute('data-spokes')||null,children:el?.childElementCount??null};});
+ for(const reel of reelSides){if(reel.frayMode&&reel.frayMode!==(sectionOn.fray?pitch:'OFF'))issues.push({severity:'WARNING',type:'reel-fray-state-mismatch',side:reel.side});if(reel.groveMode&&reel.groveMode!==(sectionOn.grove?grove:'OFF'))issues.push({severity:'WARNING',type:'reel-grove-state-mismatch',side:reel.side});}
+ const lamp=document.getElementById('tm-tape-status-lamp'),speedDisplay=document.getElementById('tm-tape-status-speed'),stateDisplay=document.getElementById('tm-tape-status-state');
+ if(stateDisplay&&stateDisplay.textContent!==(sectionOn.tape?'ON':'OFF'))issues.push({severity:'WARNING',type:'tape-status-mismatch'});
+ const audio={sampleRate:ctx?.sampleRate??null,contextState:ctx?.state??null,host:TMFRAY_NATIVE.mode,ready:TMFRAY_NATIVE.ready,worklet:TMFRAY_NATIVE.worklet,workletFailure:TMFRAY_NATIVE.workletFailure,error:TMFRAY_NATIVE.error,origin:location.origin,protocol:location.protocol};
+ const report={schema:'tmfray-full-plugin-diagnostic-v1',build:265,created:new Date().toISOString(),uptimeSeconds:+((performance.now()-this.started)/1000).toFixed(2),platform:navigator.userAgent,environment:{viewport:{width:innerWidth,height:innerHeight,devicePixelRatio:devicePixelRatio},visibility:document.visibilityState,online:navigator.onLine,secureContext:isSecureContext},audio,source:{kind:typeof playMode==='string'?playMode:'unknown',durationSeconds:buffer?+buffer.duration.toFixed(2):null,channels:buffer?.numberOfChannels??null},plugin:{powered,playing,selectedSection:selected,enabled:{...sectionOn},fray:{selected:pitch,effectiveShape:shape},grove:{selected:grove,effectiveFinish:finish},tape:{speed:tapeSpeed,pitchOnly,indicator:{lampFill:lamp?.getAttribute('fill')??null,speed:speedDisplay?.textContent??null,state:stateDisplay?.textContent??null}},routing:{mode:audioRoute.mode,order:audioRoute.order,revision:routingRevision},transport:{elapsedSeconds:transport?.elapsed??null,visualSpeed:transport?.visualSpeed??null,leftAngle:transport?.leftAngle??null,rightAngle:transport?.rightAngle??null},visuals:{reels:reelSides,tapePath:document.getElementById('tape-ribbon')?.getAttribute('d')??null}},health:{issues,missingElements:missing,eventsRetained:this.events.length,eventsCapacity:this.maxEvents},events:this.events};
+ return JSON.stringify(report,null,2);}
 };
+window.addEventListener('error',e=>{TMFRAY_DIAG.add('javascript-error',{message:String(e.message||'unknown'),source:e.filename?e.filename.split('/').pop():null,line:e.lineno||null,column:e.colno||null});});
+window.addEventListener('unhandledrejection',e=>{TMFRAY_DIAG.add('unhandled-promise-rejection',{message:String(e.reason?.message||e.reason||'unknown').slice(0,400)});});
+document.addEventListener('visibilitychange',()=>TMFRAY_DIAG.add('visibility',{state:document.visibilityState}));
+window.addEventListener('pagehide',()=>TMFRAY_DIAG.add('pagehide'));
 // No JS signal processing here: all audio blocks run through the compiled C++ WASM.
 const TMFRAY_NATIVE={
  node:null,core:null,mode:'UNINITIALIZED',error:null,workletFailure:null,ready:false,worklet:false,pending:null,lastSnapshot:'',sourceId:null,
@@ -2145,6 +2159,7 @@ function tmUpdateTapeStatus(){
  state.setAttribute('fill',enabled?'#e8b56d':'#8e9990');
 }
 function setTapeSpeed(rate){
+ if(tapeSpeed!==rate)TMFRAY_DIAG.add('tape-speed-change',{from:tapeSpeed,to:rate});
  tapeSpeed=rate;
  tmUpdateTapeStatus();
  const speedMixKnob=knobSpecs.find(k=>k.name==='SPD MIX');
@@ -2196,7 +2211,7 @@ for(const b of sectionSwitches){
  const r=mk('rect',{x:b.x-31,y:b.y-11,width:62,height:23,rx:3,fill:'#b7d0b5',stroke:'#4d594d','stroke-width':2},g);
  mk('rect',{x:b.x-28,y:b.y-8,width:56,height:17,rx:2,fill:'url(#panelpaper)','pointer-events':'none'},g);const t=label('ON',b.x,b.y+1,13,g);
  const update=()=>{r.setAttribute('fill',sectionOn[b.id]?'#b7d0b5':'#d1c6bf');t.textContent=sectionOn[b.id]?'ON':'OFF';g.setAttribute('aria-pressed',String(sectionOn[b.id]));g.setAttribute('aria-label',`${b.id.toUpperCase()} ${sectionOn[b.id]?'on':'off'}`)};
- const act=()=>{sectionOn[b.id]=!sectionOn[b.id];routeChanged();update();if(b.id==='tape')tmUpdateTapeStatus();updateAudio();if(b.id==='tape')updateTapeTempoReadout()};
+ const act=()=>{sectionOn[b.id]=!sectionOn[b.id];TMFRAY_DIAG.add('section-toggle',{section:b.id,enabled:sectionOn[b.id]});routeChanged();update();if(b.id==='tape')tmUpdateTapeStatus();updateAudio();if(b.id==='tape')updateTapeTempoReadout()};
  g.addEventListener('click',act);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}});update();
 }
 const power=document.getElementById('power');
