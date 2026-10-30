@@ -406,7 +406,7 @@ body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
      spokes/windows expose the metal transport panel, while wound tape is
      independently drawn as a variable-radius annulus underneath the face. -->
 <!-- TM-FRAY interchangeable reel-face silhouettes. Original spindle, reel base and motor untouched. -->
-<g id="tm-reel-neutral"><circle r="110" fill="none" stroke="#858987" stroke-width="7"/><g fill="#858987" stroke="#555b58" stroke-width="1.8"><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(60)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(120)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(180)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(240)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(300)"/></g><circle r="33" fill="#919593" stroke="#444b49" stroke-width="4"/><circle r="20" fill="#b7bab6" stroke="#626b68" stroke-width="3"/><circle r="5" fill="#414845"/></g>
+<pattern id="reel-neutral-grain" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M0 2H12M0 8H12" stroke="#343e42" stroke-width=".45" opacity=".18"/></pattern><g id="tm-reel-neutral"><circle r="110" fill="none" stroke="#858987" stroke-width="7"/><g fill="#858987" stroke="#555b58" stroke-width="1.8"><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(60)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(120)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(180)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(240)"/><path d="M-9 -31 L-12 -104 L12 -104 L9 -31Z" transform="rotate(300)"/></g><circle r="33" fill="#919593" stroke="#444b49" stroke-width="4"/><circle r="20" fill="#b7bab6" stroke="#626b68" stroke-width="3"/><circle r="5" fill="#414845"/></g>
 <g id="tm-reel-sway"><use href="#reel-face"/></g>
 <g id="tm-reel-wander"><circle r="110" fill="none" stroke="#b1aea1" stroke-width="5"/><g fill="#b9b5a9" stroke="#56564f" stroke-width="3"><path d="M-19 -31 L-33 -104 L12 -107 L19 -30Z"/><path d="M-19 -31 L-33 -104 L12 -107 L19 -30Z" transform="rotate(90)"/><path d="M-19 -31 L-33 -104 L12 -107 L19 -30Z" transform="rotate(180)"/><path d="M-19 -31 L-33 -104 L12 -107 L19 -30Z" transform="rotate(270)"/></g><circle r="33" fill="#bcb9ae" stroke="#4a4c47" stroke-width="4"/><circle r="18" fill="#e0ded6" stroke="#666a63" stroke-width="3"/><circle r="5" fill="#414845"/></g>
 <g id="tm-reel-rise"><circle r="110" fill="none" stroke="#c4bca9" stroke-width="5"/><g fill="#bcb3a1" stroke="#555149" stroke-width="3"><path d="M-11 -32 L-36 -103 L-4 -109 L18 -32Z"/><path d="M-11 -32 L-36 -103 L-4 -109 L18 -32Z" transform="rotate(72)"/><path d="M-11 -32 L-36 -103 L-4 -109 L18 -32Z" transform="rotate(144)"/><path d="M-11 -32 L-36 -103 L-4 -109 L18 -32Z" transform="rotate(216)"/><path d="M-11 -32 L-36 -103 L-4 -109 L18 -32Z" transform="rotate(288)"/></g><circle r="34" fill="#d1c9b9" stroke="#585247" stroke-width="4"/><circle r="18" fill="#eee6d8" stroke="#71695d" stroke-width="3"/><circle r="5" fill="#414845"/></g>
@@ -2019,6 +2019,7 @@ for(const b of modeSpecs){let g=mk('g',{class:'mode',tabindex:0,role:'button','a
 // The transparent spaces between spokes expose the changing dark tape packs.
 // SWAY + WOOD retains the previously approved original three-window artwork.
 const reelFamilies={
+ NEUTRAL:{count:6,shape:'neutral',bezel:7},
  FALL:{count:3,shape:'broad',bezel:10},
  RISE:{count:4,shape:'forged',bezel:12},
  SWAY:{count:3,shape:'original',bezel:10},
@@ -2026,6 +2027,7 @@ const reelFamilies={
  COLLAPSE:{count:6,shape:'slotted',bezel:13}
 };
 const reelFinishes={
+ NEUTRAL:{base:'#858b8a',highlight:'#c1c6c4',edge:'#444d50',etch:'#6a7475',grain:'reel-neutral-grain'},
  PAPER:{base:'#e4e0d4',highlight:'#f8f5ec',edge:'#575b55',etch:'#888b83',grain:'reel-paper-scratches'},
  WOOD:{base:'#d4ccbc',highlight:'#f4f0e5',edge:'#4c5148',etch:'#8e806d',grain:'reel-wood-scratches'},
  MOSS:{base:'#b1bbb0',highlight:'#e1e8d9',edge:'#49564b',etch:'#657867',grain:'reel-moss-scratches'},
@@ -2035,6 +2037,7 @@ function reelSpokePath(shape){
  // Radial face coordinates, with 0 degrees pointing up; every variant is
  // physically distinct with different windows between the spokes.
  switch(shape){
+  case 'neutral':return 'M-8 -30 L-12 -105 Q0 -110 12 -105 L8 -30 Z';
   case 'broad':return 'M-17 -32 Q-20 -36 -21 -40 L-48 -99 Q-50 -113 -38 -117 L38 -117 Q50 -112 47 -99 L21 -41 Q20 -34 15 -32 Z';
   case 'forged':return 'M-12 -28 Q-19 -34 -19 -43 L-20 -99 Q-20 -116 -10 -117 L10 -117 Q20 -116 20 -99 L19 -43 Q17 -35 12 -28 Z';
   case 'swept':return 'M-11 -30 Q-16 -35 -19 -44 Q-38 -78 -42 -108 Q-38 -117 -25 -117 L5 -117 Q20 -114 19 -104 Q8 -66 15 -43 L12 -32 Z';
@@ -2043,17 +2046,18 @@ function reelSpokePath(shape){
  }
 }
 function renderReelAppearance(){
- const family=reelFamilies[pitch]||reelFamilies.SWAY;
- const finish=reelFinishes[grove]||reelFinishes.WOOD;
+ const frayEnabled=!!sectionOn.fray,groveEnabled=!!sectionOn.grove;
+ const family=frayEnabled?(reelFamilies[pitch]||reelFamilies.SWAY):reelFamilies.NEUTRAL;
+ const finish=groveEnabled?(reelFinishes[grove]||reelFinishes.WOOD):reelFinishes.NEUTRAL;
  for(const side of ['left','right']){
   const face=document.getElementById(side+'-reel-face-variant');
   if(!face)continue;
   face.replaceChildren();
-  face.setAttribute('data-fray-mode',pitch);
-  face.setAttribute('data-grove-mode',grove);
+  face.setAttribute('data-fray-mode',frayEnabled?pitch:'OFF');
+  face.setAttribute('data-grove-mode',groveEnabled?grove:'OFF');
   face.setAttribute('data-spokes',String(family.count));
-  face.setAttribute('aria-label',`${family.count}-spoke ${pitch.toLowerCase()} reel with ${grove.toLowerCase()} finish`);
-  if(family.shape==='original'&&grove==='WOOD'){
+  face.setAttribute('aria-label',`${family.count}-spoke ${frayEnabled?pitch.toLowerCase():'neutral'} reel with ${groveEnabled?grove.toLowerCase():'neutral'} finish`);
+  if(frayEnabled&&groveEnabled&&family.shape==='original'&&grove==='WOOD'){
    mk('use',{href:'#reel-face'},face);
    mk('circle',{r:115,fill:'none',stroke:'#797d70','stroke-width':8},face);
    mk('circle',{r:115,fill:'none',stroke:'#e1e0d9','stroke-width':2},face);
@@ -2088,13 +2092,13 @@ function renderReelAppearance(){
    }else{
     mk('path',{d:'M-14 -43L-31 -86',fill:'none',stroke:finish.highlight,'stroke-width':1.7,opacity:.85},spoke);
    }
-   if(grove==='PAPER'){
+   if(groveEnabled&&grove==='PAPER'){
     // Visible paper/fabric-like radial repair stitching.
     for(let k=0;k<3;k++)mk('path',{d:`M-7 ${-54-k*9}l14 -2`,stroke:finish.etch,'stroke-width':1,'stroke-dasharray':'2 2',fill:'none'},spoke);
-   }else if(grove==='MOSS'){
+   }else if(groveEnabled&&grove==='MOSS'){
     mk('circle',{cx:7,cy:-79,r:3.5,fill:'#718e76',opacity:.7},spoke);
     mk('circle',{cx:-7,cy:-65,r:2.1,fill:'#829a82',opacity:.8},spoke);
-   }else if(grove==='DUST'){
+   }else if(groveEnabled&&grove==='DUST'){
     for(let k=0;k<3;k++)mk('circle',{cx:(k-1)*5,cy:-58-k*12,r:1.5+(k%2),fill:'#535755',opacity:.54},spoke);
    }else{
     mk('path',{d:'M-8 -76l16 -4',stroke:finish.etch,'stroke-width':1.1,opacity:.75},spoke);
@@ -2868,16 +2872,18 @@ function tmUpdateReelFace(active){
  tmLastReelFace=id;
  for(const el of tmReelFaceNodes)if(el)el.setAttribute('href',id);
 }
+let tmReelRenderedState='';
 function tmPaintWoundTape(groveActive,frayActive){
- tmUpdateReelFace(frayActive);
+ const state=(frayActive?pitch:'OFF')+'|'+(groveActive?grove:'OFF');
+ if(state!==tmReelRenderedState){tmReelRenderedState=state;renderReelAppearance();}
  const material=groveActive?tmTapePalette[grove]:null;
- const bodyColor=material?material[0]:(frayActive?tmReelFrayColors[pitch]:tmReelNeutral.body);
+ const bodyColor=material?material[0]:'#3b3430';
  for(const pack of tapePacks){
   pack.body.setAttribute('fill',bodyColor);
   for(let i=0;i<pack.grooves.length;i++){
-   const color=material?(i===1?material[0]:material[1]):(frayActive?(i===1?'#302c2a':'#ad9581'):tmReelNeutral.grooves[i]);
+   const color=material?(i===1?material[0]:material[1]):['#62584e','#242321','#7c7062'][i];
    pack.grooves[i].setAttribute('stroke',color);
-   pack.grooves[i].setAttribute('stroke-dasharray',frayActive?(pitch==='COLLAPSE'?'3 4':pitch==='WANDER'?'9 3':'none'):'none');
+   pack.grooves[i].setAttribute('stroke-dasharray',material?material[2]:'none');
   }
  }
 }
