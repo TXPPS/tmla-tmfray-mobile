@@ -68,7 +68,11 @@ class TMNativeCore {
 class TMFrayNativeProcessor extends AudioWorkletProcessor{
  constructor(){
   super();this.core=new TMNativeCore();this.ready=false;this.count=0;
-  this.lastRoute='';this.routingFade=1;this.routePending=null;this.routeFadeDelta=0;this.diag={blocks:0,slow:0,nonfinite:0,spikes:0,maxJump:0,maxAbs:0,maxMs:0,lastL:0,lastR:0,previous:false};
+  this.lastRoute='';this.routingFade=1;this.routePending=null;this.routeFadeDelta=0;
+  // Global output envelope: wet, dry, feedback and delayed signals share one physical transport gate.
+  this.transportGate=1;this.transportFrom=1;this.transportTo=1;this.transportProgress=1;this.transportFrames=1;
+  this.transportBrake=false;this.transportPower=true;this.transportPlaying=false;
+  this.diag={blocks:0,slow:0,nonfinite:0,spikes:0,maxJump:0,maxAbs:0,maxMs:0,lastL:0,lastR:0,previous:false};
   this.port.onmessage=async e=>{
    const msg=e.data;
    try{
@@ -77,7 +81,8 @@ class TMFrayNativeProcessor extends AudioWorkletProcessor{
     }else if(!this.ready)return;
     else if(msg.type==='source'){
       this.core.play(false);this.core.load(msg.left,msg.right);this.port.postMessage({type:'loaded',frames:this.core.frames});
-    }else if(msg.type==='state'){
+     }else if(msg.type==='state'){
+      this.updateTransportGate(msg.value);
       const route=JSON.stringify({route:msg.value.route,enabled:msg.value.enabled,frayPerformance:msg.value.frayPerformance});
       if(this.lastRoute&&route!==this.lastRoute){
         this.routePending=msg.value;this.routingFade=1;this.routeFadeDelta=-1/256;
@@ -88,6 +93,31 @@ class TMFrayNativeProcessor extends AudioWorkletProcessor{
     else if(msg.type==='touch'){this.core.touch(msg.side,msg.action,msg.amount);}
    }catch(error){this.port.postMessage({type:'error',message:String(error.message||error)});this.core.play(false);}
   };
+ }
+ updateTransportGate(s){
+  const brake=!!s.brake,power=!!s.powered,playing=!!s.playing;
+  const target=playing&&!brake&&power?1:0;
+  const changed=brake!==this.transportBrake||power!==this.transportPower||playing!==this.transportPlaying;
+  if(changed){
+   const seconds=!playing?0:brake!==this.transportBrake?Math.max(.05,Number(s.brakeSeconds)||1):power!==this.transportPower?(power?.95:1.6):.05;
+   this.transportFrom=this.transportGate;this.transportTo=target;
+   this.transportFrames=Math.max(1,Math.round(seconds*sampleRate));
+   this.transportProgress=seconds===0?1:0;
+   if(seconds===0)this.transportGate=target;
+   this.transportBrake=brake;this.transportPower=power;this.transportPlaying=playing;
+  }
+ }
+ applyTransportGate(l,r){
+  for(let i=0;i<l.length;i++){
+   if(this.transportProgress<1){
+    this.transportProgress=Math.min(1,this.transportProgress+1/this.transportFrames);
+    const u=this.transportProgress,curve=u*u*(3-2*u);
+    this.transportGate=this.transportFrom+(this.transportTo-this.transportFrom)*curve;
+   }else this.transportGate=this.transportTo;
+   // A single post-routing gate prevents any delayed/wet/dry branch from leaking past stop.
+   const gain=this.transportGate<1e-7?0:this.transportGate;
+   l[i]*=gain;r[i]*=gain;
+  }
  }
  process(inputs,outputs){
   const output=outputs[0];if(!output?.[0])return true;
@@ -101,6 +131,7 @@ class TMFrayNativeProcessor extends AudioWorkletProcessor{
     for(let i=0;i<l.length;i++){this.routingFade=Math.max(0,Math.min(1,this.routingFade+this.routeFadeDelta));l[i]*=this.routingFade;r[i]*=this.routingFade;}
     if(this.routingFade>=1&&!this.routePending)this.routeFadeDelta=0;
    }
+   this.applyTransportGate(l,r);
    // Rebuild 264: diagnostic sampling only; no DSP writes or allocations per sample.
    const d=this.diag;d.blocks++;const ms=tmStart===null ? 0 : performance.now()-tmStart;d.maxMs=Math.max(d.maxMs,ms);
    if(ms>(l.length/sampleRate*1000))d.slow++;
