@@ -2851,6 +2851,21 @@ const tmTapeMotionPaths=[...document.querySelectorAll('.tmfray-tape-motion')];
 const tmTapeBase=document.getElementById('tape-ribbon');
 const tmTapeDashes=document.getElementById('tape-motion-dashes');
 const tmTapeOriginalPath='M228 287 L500 475 L708 500 L965 243';
+const tmReelNeutral={body:'#504135',grooves:['#a18467','#2b2723','#b19374']};
+const tmReelFrayColors={SWAY:'#76665b',WANDER:'#73685d',RISE:'#84705c',FALL:'#685c55',COLLAPSE:'#61524c'};
+function tmPaintWoundTape(groveActive,frayActive){
+ const material=groveActive?tmTapePalette[grove]:null;
+ const bodyColor=material?material[0]:(frayActive?tmReelFrayColors[pitch]:tmReelNeutral.body);
+ for(const pack of tapePacks){
+  pack.body.setAttribute('fill',bodyColor);
+  for(let i=0;i<pack.grooves.length;i++){
+   const color=material?(i===1?material[0]:material[1]):(frayActive?(i===1?'#302c2a':'#ad9581'):tmReelNeutral.grooves[i]);
+   pack.grooves[i].setAttribute('stroke',color);
+   pack.grooves[i].setAttribute('stroke-dasharray',frayActive?(pitch==='COLLAPSE'?'3 4':pitch==='WANDER'?'9 3':'none'):'none');
+  }
+ }
+}
+
 let tmTapeLastPaint=0,tmTapeSurfaceAlpha=0,tmTapeGrainAlpha=0,tmFrayVisualDepth=0;
 function tmRunPath(run,t){
  const [ax,ay]=run.a,[bx,by]=run.b,dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
@@ -2868,6 +2883,7 @@ function tmPaintTapeSurface(now){
  const dt=tmTapeLastPaint?Math.min(.1,(now-tmTapeLastPaint)/1000):.033;
  tmTapeLastPaint=now;
  const g=sectionOn.grove?tmTapePalette[grove]:null;
+ tmPaintWoundTape(sectionOn.grove,sectionOn.fray);
  const k=1-Math.exp(-dt/.22);
  tmTapeSurfaceAlpha+=((g?1:0)-tmTapeSurfaceAlpha)*k;
  tmTapeGrainAlpha+=((g?1:0)-tmTapeGrainAlpha)*k;
