@@ -2881,6 +2881,8 @@ function transportEnvelope(now){
  }else brake.depth=brake.to;
  return clamp01(brake.depth)*clamp01(powerTransport.depth);
 }
+let tmfrayLastPackPaint=0;
+function tmfrayPackRadii(p){p=clamp01(p);return [Math.sqrt(packHubRadius**2+packArea*(1-p)),Math.sqrt(packHubRadius**2+packArea*p)];}
 function stepTransport(now){
  const dt=transport.lastFrameTime?Math.min(.08,Math.max(0,(now-transport.lastFrameTime)/1000)):0;
  const envelope=transportEnvelope(now);
@@ -2906,8 +2908,10 @@ function stepTransport(now){
  const oldElapsed=transport.elapsed;
  transport.elapsed=Math.max(0,transport.elapsed+delta);
  const tapeSeconds=Math.max(buffer?.duration||0,packTrackSeconds);
- const oldRadii=setTapeWinding(clamp01(oldElapsed/tapeSeconds));
- const newRadii=setTapeWinding(clamp01(transport.elapsed/tapeSeconds));
+ const oldRadii=tmfrayPackRadii(clamp01(oldElapsed/tapeSeconds));
+ const newRadii=tmfrayPackRadii(clamp01(transport.elapsed/tapeSeconds));
+ // SVG tape-pack geometry is expensive on mobile; paint it at most 20 times/sec.
+ if(now-tmfrayLastPackPaint>=50){setTapeWinding(clamp01(transport.elapsed/tapeSeconds));tmfrayLastPackPaint=now;}
  const leftAverage=(oldRadii[0]+newRadii[0])*.5;
  const rightAverage=(oldRadii[1]+newRadii[1])*.5;
  transport.leftAngle=(transport.leftAngle+180*tapeLinearVelocity*delta/(Math.PI*leftAverage))%360;
