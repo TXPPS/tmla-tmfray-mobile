@@ -2837,34 +2837,35 @@ const tmTapePalette={
  DUST:['#71695d','#b9ae95','1 6 1 19']
 };
 // GROVE owns the material. FRAY owns motion, never color or texture.
+// FRAY deforms the real exposed tape, not merely an overlaid squiggle.
+// GROVE continues to own material color and grain.
 const tmFrayMotion={
- SWAY:(u,t)=>Math.sin(u*7-t*2.6)*2.3,
- WANDER:(u,t)=>Math.sin(u*4-t*1.25)*2.4+Math.sin(u*11+t*.67)*.8,
- RISE:(u,t)=>-Math.pow(Math.sin(u*7-t*2.2)*.5+.5,3)*3.6,
- FALL:(u,t)=>Math.pow(Math.sin(u*7-t*2.2)*.5+.5,3)*3.6,
- COLLAPSE:(u,t)=>Math.pow(Math.max(0,Math.sin(u*10-t*3)),12)*3.2
+ SWAY:(u,t)=>Math.sin(u*5-t*2.1)*2.8,
+ WANDER:(u,t)=>Math.sin(u*3.2-t*.95)*2.6+Math.sin(u*9.5+t*.58)*1.1,
+ RISE:(u,t)=>-Math.pow(Math.max(0,Math.sin(u*8-t*2.5)),4)*6,
+ FALL:(u,t)=>Math.pow(Math.max(0,Math.sin(u*8-t*2.5)),4)*6,
+ COLLAPSE:(u,t)=>Math.pow(Math.max(0,Math.sin(u*12-t*3.2)),14)*5.5
 };
-const tmTapeRuns=[
- {a:[228,287],b:[500,475],start:.08,end:.91},
- {a:[708,500],b:[965,243],start:.09,end:.91}
-];
+const tmTapeRuns=[{a:[228,287],b:[500,475]},{a:[708,500],b:[965,243]}];
 const tmTapeMotionPaths=[...document.querySelectorAll('.tmfray-tape-motion')];
+const tmTapeBase=document.getElementById('tape-ribbon');
+const tmTapeDashes=document.getElementById('tape-motion-dashes');
+const tmTapeOriginalPath='M228 287 L500 475 L708 500 L965 243';
 let tmTapeLastPaint=0,tmTapeSurfaceAlpha=0,tmTapeGrainAlpha=0,tmFrayVisualDepth=0;
-function tmTapeMotionPath(run,t){
+function tmRunPath(run,t){
  const [ax,ay]=run.a,[bx,by]=run.b,dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
  let d='';
- for(let i=0;i<=12;i++){
-  const u=run.start+(run.end-run.start)*i/12;
-  const baseX=ax+dx*u,baseY=ay+dy*u;
-  const taper=Math.sin(Math.PI*i/12)**.65;
+ for(let i=0;i<=20;i++){
+  const u=i/20;
+  const taper=Math.sin(Math.PI*u)**1.5;
   const offset=tmFrayMotion[pitch](u*len/120,t)*tmFrayVisualDepth*taper;
-  d+=(i?' L':'M')+(baseX+nx*offset).toFixed(2)+' '+(baseY+ny*offset).toFixed(2);
+  d+=(i?' L':'M')+(ax+dx*u+nx*offset).toFixed(2)+' '+(ay+dy*u+ny*offset).toFixed(2);
  }
  return d;
 }
 function tmPaintTapeSurface(now){
- if(now-tmTapeLastPaint<50)return;
- const dt=tmTapeLastPaint?Math.min(.1,(now-tmTapeLastPaint)/1000):.05;
+ if(now-tmTapeLastPaint<33)return;
+ const dt=tmTapeLastPaint?Math.min(.1,(now-tmTapeLastPaint)/1000):.033;
  tmTapeLastPaint=now;
  const g=sectionOn.grove?tmTapePalette[grove]:null;
  const k=1-Math.exp(-dt/.22);
@@ -2877,11 +2878,16 @@ function tmPaintTapeSurface(now){
  tmTapeGrain.setAttribute('opacity',(tmTapeGrainAlpha*.4).toFixed(3));
  tmFrayVisualDepth+=((sectionOn.fray&&playing?1:0)-tmFrayVisualDepth)*k;
  const time=transport.elapsed*(reverseService.reverse?-1:1);
- for(let i=0;i<tmTapeMotionPaths.length;i++){
-  const path=tmTapeMotionPaths[i];
-  path.setAttribute('opacity',(tmFrayVisualDepth*.85).toFixed(3));
-  if(tmFrayVisualDepth>.005)path.setAttribute('d',tmTapeMotionPath(tmTapeRuns[i],time));
+ if(tmFrayVisualDepth>.001){
+  const first=tmRunPath(tmTapeRuns[0],time),second=tmRunPath(tmTapeRuns[1],time);
+  // The concealed motor segment stays exactly as it was.
+  const combined=first+' L708 500 '+second;
+  for(const el of [tmTapeBase,tmTapeDashes,tmTapeSurface,tmTapeGrain])el.setAttribute('d',combined);
+ }else{
+  for(const el of [tmTapeBase,tmTapeDashes,tmTapeSurface,tmTapeGrain])el.setAttribute('d',tmTapeOriginalPath);
  }
+ // Previous floating squiggles are disabled: the whole tape now flexes together.
+ for(const path of tmTapeMotionPaths)path.setAttribute('opacity','0');
  if(playing&&transport.visualSpeed)tmTapeGrain.setAttribute('stroke-dashoffset',(-transport.elapsed*130).toFixed(2));
 }
 
